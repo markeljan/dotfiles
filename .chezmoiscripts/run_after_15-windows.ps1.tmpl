@@ -1,0 +1,142 @@
+$ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'Run chezmoi with PowerShell 7 available on PATH.' }
+$source = {{ .chezmoi.sourceDir | replace "\\" "/" | quote }}
+$destination = {{ .chezmoi.destDir | replace "\\" "/" | quote }}
+$isLiveHome = [IO.Path]::GetFullPath($destination).TrimEnd('\','/') -eq [IO.Path]::GetFullPath($env:USERPROFILE).TrimEnd('\','/')
+$documents = if ($isLiveHome) { [Environment]::GetFolderPath('MyDocuments') } else { Join-Path $destination 'Documents' }
+$roaming = if ($isLiveHome) { $env:APPDATA } else { Join-Path $destination 'AppData/Roaming' }
+$local = if ($isLiveHome) { $env:LOCALAPPDATA } else { Join-Path $destination 'AppData/Local' }
+$backupRoot = Join-Path $local ('dotfiles/backups/' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+function Write-Config([string]$Path,[string]$Content) {
+    if ((Test-Path -LiteralPath $Path) -and [IO.File]::ReadAllText($Path) -eq $Content) { return }
+    if (Test-Path -LiteralPath $Path) {
+        New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+        Copy-Item -LiteralPath $Path -Destination (Join-Path $backupRoot ([guid]::NewGuid().ToString('N') + '-' + (Split-Path $Path -Leaf)))
+    }
+    New-Item -ItemType Directory -Path (Split-Path $Path) -Force | Out-Null
+    [IO.File]::WriteAllText($Path,$Content,[Text.UTF8Encoding]::new($false))
+}
+foreach ($shellDir in @('PowerShell','WindowsPowerShell')) {
+    # All-hosts hook also covers terminals other than the console host.
+    $profilePath = Join-Path $documents "$shellDir/profile.ps1"
+    $existing = if (Test-Path $profilePath) { Get-Content $profilePath -Raw } else { '' }
+    if ($existing -notmatch '# >>> dotfiles powershell >>>') {
+        $hook = @'
+
+# >>> dotfiles powershell >>>
+. (Join-Path $env:USERPROFILE '.config/powershell/profile.ps1')
+# <<< dotfiles powershell <<<
+'@
+        Write-Config $profilePath ($existing + $hook + "`n")
+    }
+    # Migrate the one-off setup profile without discarding unrelated local content.
+    $hostProfile = Join-Path $documents "$shellDir/Microsoft.PowerShell_profile.ps1"
+    if (Test-Path $hostProfile) {
+        $old = Get-Content $hostProfile -Raw
+        if ($old -match '# >>> developer-tools >>>') {
+            Write-Config $hostProfile ($old -replace '(?s)# >>> developer-tools >>>.*?# <<< developer-tools <<<\s*','')
+        }
+    }
+}
+if ($isLiveHome -and $env:DOTFILES_SKIP_PACKAGES -ne '1') {
+    if ((Get-ExecutionPolicy -Scope CurrentUser) -eq 'Undefined' -or (Get-ExecutionPolicy -Scope CurrentUser) -eq 'Restricted') {
+        Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
+    }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command 'if ((Get-ExecutionPolicy -Scope CurrentUser) -in @("Undefined","Restricted")) { Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force }'
+    $fontDir = Join-Path $local 'Microsoft/Windows/Fonts'
+    $fontNames = @('MartianMonoNerdFontMono-Regular.ttf','MartianMonoNerdFontMono-Bold.ttf','MartianMonoNerdFontMono-Medium.ttf')
+    $missing = @($fontNames | Where-Object { -not (Test-Path (Join-Path $fontDir $_)) })
+    if ($missing.Count) {
+        $tmp = Join-Path ([IO.Path]::GetTempPath()) ('dotfiles-font-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+        try {
+            $zip = Join-Path $tmp 'font.zip'
+            Invoke-WebRequest {{ .fonts.martian.url | quote }} -OutFile $zip
+            if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne {{ .fonts.martian.sha256 | quote }}) { throw 'Font archive checksum mismatch.' }
+            Expand-Archive $zip (Join-Path $tmp 'fonts')
+            New-Item -ItemType Directory -Path $fontDir -Force | Out-Null
+            foreach ($name in $missing) { Copy-Item (Join-Path $tmp "fonts/$name") (Join-Path $fontDir $name) }
+        } finally { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+    $fontKey = 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+    New-Item $fontKey -Force | Out-Null
+    foreach ($name in $fontNames) {
+        New-ItemProperty $fontKey -Name ($name.Replace('.ttf','') + ' (TrueType)') -Value (Join-Path $fontDir $name) -PropertyType String -Force | Out-Null
+    }
+    Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class DotfilesFontLoader {
+ [DllImport("gdi32.dll", CharSet=CharSet.Unicode)] public static extern int AddFontResourceEx(string file, uint flags, IntPtr reserved);
+}
+'@
+    foreach ($name in $fontNames) { [void][DotfilesFontLoader]::AddFontResourceEx((Join-Path $fontDir $name),0,[IntPtr]::Zero) }
+}
+$cursorPath = Join-Path $roaming 'Cursor/User/settings.json'
+$settings = if (Test-Path $cursorPath) { Get-Content $cursorPath -Raw | ConvertFrom-Json -AsHashtable } else { @{} }
+$baseline = Get-Content (Join-Path $source 'private_Library/private_Application Support/private_Cursor/User/settings.json') -Raw | ConvertFrom-Json -AsHashtable
+foreach ($key in $baseline.Keys) {
+    if (-not $key.EndsWith('.osx') -and $key -notin @('git.path','claudeCode.allowDangerouslySkipPermissions')) { $settings[$key]=$baseline[$key] }
+}
+$settings.Remove('git.path')
+$settings['editor.fontFamily']="'{{ .fonts.martian.family }}', Consolas, monospace"
+$settings['terminal.integrated.fontFamily']='{{ .fonts.martian.family }}'
+$settings['terminal.integrated.defaultProfile.windows']='PowerShell'
+$settings['terminal.integrated.profiles.windows']=@{
+    PowerShell=@{path='pwsh.exe';args=@('-NoLogo')}
+    'Git Bash'=@{path='C:\Program Files\Git\bin\bash.exe';args=@('--login','-i')}
+}
+# Preserve additional local terminal profiles, including an already configured WSL profile.
+if (Test-Path $cursorPath) {
+    $previous=Get-Content $cursorPath -Raw | ConvertFrom-Json -AsHashtable
+    if ($previous['terminal.integrated.profiles.windows']) {
+        foreach ($key in $previous['terminal.integrated.profiles.windows'].Keys) {
+            if (-not $settings['terminal.integrated.profiles.windows'].ContainsKey($key)) {
+                $settings['terminal.integrated.profiles.windows'][$key]=$previous['terminal.integrated.profiles.windows'][$key]
+            }
+        }
+    }
+    if ($previous['terminal.integrated.defaultProfile.windows']) { $settings['terminal.integrated.defaultProfile.windows']=$previous['terminal.integrated.defaultProfile.windows'] }
+}
+Write-Config $cursorPath (($settings | ConvertTo-Json -Depth 30) + "`n")
+$terminalPath=Join-Path $local 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
+$terminal=if (Test-Path $terminalPath) { Get-Content $terminalPath -Raw | ConvertFrom-Json -AsHashtable } else { @{} }
+if (-not $terminal.profiles) { $terminal.profiles=@{} }
+if (-not $terminal.profiles.defaults) { $terminal.profiles.defaults=@{} }
+$terminal.profiles.defaults.font=@{face='{{ .fonts.martian.family }}';size=13}
+$terminal.profiles.defaults.opacity=80
+$terminal.profiles.defaults.useAcrylic=$true
+$terminal.profiles.defaults.colorScheme='One Half Dark'
+$terminal.profiles.defaults.cursorShape='filledBox'
+$terminal.profiles.defaults.padding='4, 2, 4, 2'
+# Keep the wallpaper in a stable location independent of the chezmoi checkout path.
+$wallpaper=Join-Path $destination '.config/windows/tahoe-day.jpg'
+New-Item -ItemType Directory -Path (Split-Path $wallpaper) -Force | Out-Null
+Copy-Item (Join-Path $source 'dot_config/ghostty/backgrounds/tahoe-day.jpg') $wallpaper -Force
+$terminal.profiles.defaults.backgroundImage=$wallpaper
+$terminal.profiles.defaults.backgroundImageOpacity=0.25
+$terminal.profiles.defaults.backgroundImageStretchMode='uniformToFill'
+$terminal.theme='dark'
+$powerShellGuid='{a15d747b-e8ee-4c3a-b914-e6fed15e410a}'
+$terminal.profiles.list=@($terminal.profiles.list | Where-Object { $_ -and $_.guid -ne $powerShellGuid }) + @(
+    @{guid=$powerShellGuid;name='PowerShell';commandline='pwsh.exe -NoLogo';startingDirectory=$destination;hidden=$false}
+)
+if (-not $terminal.defaultProfile) { $terminal.defaultProfile=$powerShellGuid }
+Write-Config $terminalPath (($terminal | ConvertTo-Json -Depth 30) + "`n")
+Get-ChildItem (Join-Path $source 'dot_config/nvim') -File -Recurse | ForEach-Object {
+    $relative=[IO.Path]::GetRelativePath((Join-Path $source 'dot_config/nvim'),$_.FullName)
+    Write-Config (Join-Path $local "nvim/$relative") ([IO.File]::ReadAllText($_.FullName))
+}
+if ($isLiveHome -and $env:DOTFILES_SKIP_PACKAGES -ne '1') {
+    $defaults=@{'init.defaultBranch'='main';'core.autocrlf'='input';'core.editor'='cursor --wait';'fetch.prune'='true';'pull.ff'='only';'core.longpaths'='true'}
+    foreach ($key in $defaults.Keys) {
+        & git config --global --get $key *> $null
+        if ($LASTEXITCODE -ne 0) { & git config --global $key $defaults[$key] }
+    }
+    & git config --global --get credential.helper *> $null
+    if ($LASTEXITCODE -ne 0) { & git config --global credential.helper manager }
+    foreach ($extension in @('esbenp.prettier-vscode','biomejs.biome','bradlc.vscode-tailwindcss','anysphere.remote-wsl')) {
+        & cursor.cmd --install-extension $extension
+        if ($LASTEXITCODE -ne 0) { throw "Cursor extension installation failed: $extension" }
+    }
+}

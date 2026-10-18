@@ -1,3 +1,7 @@
+if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ ! -w "$XDG_RUNTIME_DIR" ]; then
+  unset XDG_RUNTIME_DIR
+fi
+
 path_prepend() {
   case ":${PATH:-}:" in
     *":$1:"*) ;;

@@ -1,0 +1,38 @@
+# Shared Windows shell. Machine-specific changes belong in local.ps1 beside this file.
+$env:EDITOR = 'cursor --wait'
+$env:VISUAL = $env:EDITOR
+$env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git'
+if (Get-Command fnm -CommandType Application -ErrorAction SilentlyContinue) {
+    . (Join-Path $env:USERPROFILE '.config/powershell/fnm.ps1')
+    # Evaluate in the current scope before any fnm use/install command.
+    fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+    fnm use --silent-if-unchanged default 2>$null | Out-Null
+}
+if (-not [Console]::IsOutputRedirected -and (Get-Module -ListAvailable PSReadLine)) {
+    Import-Module PSReadLine
+    Set-PSReadLineOption -EditMode Emacs
+    if ((Get-Command Set-PSReadLineOption).Parameters.ContainsKey('PredictionSource') -and $env:TERM -ne 'dumb') {
+        Set-PSReadLineOption -PredictionSource History
+    }
+    Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+}
+if (Get-Command zoxide -ErrorAction SilentlyContinue) { zoxide init powershell | Out-String | Invoke-Expression }
+if (-not [Console]::IsOutputRedirected -and $env:TERM -ne 'dumb' -and (Get-Command starship -ErrorAction SilentlyContinue)) {
+    starship init powershell | Out-String | Invoke-Expression
+}
+{{ range .shell.aliases -}}
+{{ if not (has .name (list "cat" "grep" "mkdir" "rsy" "dclaude" "dcodex")) -}}
+{{ if eq .name "gfl" -}}
+function gfl { git fetch; if ($LASTEXITCODE -eq 0) { git pull @args } }
+{{ else -}}
+function {{ .name }} { {{ .expansion }} @args }
+{{ end -}}
+{{ end -}}
+{{ end }}
+function gc { if ($args.Count) { git commit -m ($args -join ' ') } else { git commit -m yolo } }
+function mkcd([string]$Path) { New-Item -ItemType Directory -Path $Path -Force | Out-Null; Set-Location -LiteralPath $Path }
+function code { cursor @args }
+Set-Alias grep rg
+$localProfile = Join-Path $env:USERPROFILE '.config/powershell/local.ps1'
+if (Test-Path -LiteralPath $localProfile) { . $localProfile }

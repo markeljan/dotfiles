@@ -216,7 +216,13 @@ install_node_lts() {
     return 1
   fi
 
-  eval "$(fnm env --shell bash)"
+  # sudo/runuser can preserve another user's runtime directory.
+  if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ ! -w "$XDG_RUNTIME_DIR" ]; then
+    unset XDG_RUNTIME_DIR
+  fi
+  local fnm_environment
+  fnm_environment="$(fnm env --shell bash)" || return 1
+  eval "$fnm_environment"
 
   if fnm_has_installed_lts; then
     local current

@@ -27,6 +27,7 @@ apt = [
   "git",
   "procps",
   "curl",
+  "unzip",
   "fd-find",
   "fzf",
   "neovim",
@@ -44,6 +45,7 @@ apt = [
   "git",
   "procps",
   "curl",
+  "unzip",
   "fd-find",
   "fzf",
   "neovim",
@@ -64,3 +66,24 @@ tools = []
 
 [packages.bun]
 packages = []
+
+[packages.windows]
+winget = [
+  "Git.Git",
+  "Microsoft.WindowsTerminal",
+  "Anysphere.Cursor",
+  "Schniz.fnm",
+  "Oven-sh.Bun",
+  "astral-sh.uv",
+  "GitHub.cli",
+  "Starship.Starship",
+  "ajeetdsouza.zoxide",
+  "BurntSushi.ripgrep.MSVC",
+  "sharkdp.fd",
+  "junegunn.fzf",
+  "sharkdp.bat",
+  "eza-community.eza",
+  "dalance.procs",
+  "Fastfetch-cli.Fastfetch",
+  "Neovim.Neovim",
+]

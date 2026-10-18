@@ -1,6 +1,46 @@
 # Dotfiles
 
-Minimal [chezmoi](https://www.chezmoi.io/) dotfiles for macOS, Debian, and Ubuntu.
+Minimal [chezmoi](https://www.chezmoi.io/) dotfiles for Windows, macOS, Debian, and Ubuntu.
+
+## Windows
+
+On a new PC, install Git, chezmoi, and the standard PowerShell 7 MSI build:
+
+```powershell
+winget install --id Git.Git --exact --source winget
+winget install --id Microsoft.PowerShell --exact --source winget --installer-type wix
+winget install --id twpayne.chezmoi --exact --source winget
+```
+
+Open a new PowerShell 7 window, then run:
+
+```powershell
+chezmoi init --apply Markeljan
+```
+
+Windows bootstrap installs Cursor, Windows Terminal, GitHub CLI, fnm and Node LTS, Bun, pnpm, uv and Python 3.13, Neovim, Claude Code, Codex, and the shared terminal utilities through winget/npm/uv. Installers may request administrator access. Prefer the standard PowerShell MSI build: the Store/MSIX build can isolate runtime files from other tools.
+
+The shared PowerShell profile lives in `~/.config/powershell/profile.ps1`, with include hooks in both PowerShell 7 and Windows PowerShell's all-host profiles. Local profile contents are preserved. The old one-off `developer-tools` profile block is backed up and migrated automatically. Machine-specific PowerShell customizations belong in `~/.config/powershell/local.ps1`.
+
+Cursor formatting preferences and Windows Terminal styling are adapted from the macOS configuration, with native Windows paths. Cursor, Biome, Prettier, Tailwind and Remote WSL are installed. Existing additional editor settings and terminal profiles are preserved. Changed Windows application configuration is backed up under `%LOCALAPPDATA%/dotfiles/backups`. Neovim uses `%LOCALAPPDATA%/nvim` on Windows.
+
+Git defaults are applied only when absent; identity and credentials are never copied into the repository. On each new machine, set your commit name/email and sign in to GitHub, Cursor, Claude, and Codex yourself. Reopen terminals after installing tools so they receive the updated PATH.
+
+### Optional WSL
+
+The native Windows setup does not enable virtualization or reboot your PC. For Linux development, run `wsl --install -d Ubuntu-24.04` from an administrator terminal, restart if requested, and complete Ubuntu's user/password creation. Then follow the Linux quick start below inside Ubuntu. Keep Linux projects in `~/Projects` and open them through Cursor Remote WSL.
+
+### Fonts
+
+All platforms install the regular, medium, and bold **MartianMono NFM** fonts from a versioned Nerd Fonts archive, verified with SHA-256. This is Martian Mono with the icon glyphs used by the prompt and file listings. No other font family is required. The ordinary Martian Mono font can coexist, but the terminal/editor should select `MartianMono NFM`.
+
+On Windows fonts are registered per-user and loaded immediately; Linux uses `~/.local/share/fonts` and refreshes the font cache when available; macOS uses `~/Library/Fonts`. `DOTFILES_SKIP_PACKAGES=1` skips font downloads as well as package installation. On remote/WSL sessions, the font must be installed on the computer displaying the terminal; the Windows setup handles this.
+
+### Verification
+
+`tests/verify-unix.sh` and `tests/verify-windows.ps1` test temporary destinations with package installation disabled, including shell syntax, repeated application, OS-specific exclusions, and local configuration preservation. GitHub Actions runs them on Ubuntu, macOS, and Windows. These rendering checks do not install every package on every CI runner; actual Windows and Ubuntu package/runtime checks should also be performed when changing bootstrap logic.
+
+The bootstrap rejects a failed `fnm env` before running Node commands, and clears an inherited runtime directory that the current Linux user cannot write. Windows has a small junction fallback for fnm aliases and uses uv's verified Python installation path if the version alias is unavailable.
 
 ## Quick Start
 

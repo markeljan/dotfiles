@@ -1,0 +1,51 @@
+$ErrorActionPreference = 'Stop'
+if ($env:DOTFILES_SKIP_PACKAGES -eq '1') { return }
+if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'Install standard PowerShell 7 and run chezmoi from pwsh. See README.md.' }
+if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { throw 'Install Microsoft App Installer (winget), then retry.' }
+{{ range .packages.windows.winget -}}
+& winget list --id {{ . | quote }} --exact --source winget --accept-source-agreements --disable-interactivity *> $null
+if ($LASTEXITCODE -ne 0) {
+    & winget install --id {{ . | quote }} --exact --source winget --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+    if ($LASTEXITCODE -notin @(0,3010,-1978335189)) { throw 'Could not install {{ . }}. Resolve the installer error and run chezmoi apply again.' }
+}
+{{ end }}
+$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+# Never activate Node until fnm has exported this process's environment.
+. (Join-Path {{ .chezmoi.sourceDir | replace "\\" "/" | quote }} 'dot_config/powershell/fnm.ps1')
+fnm env --shell powershell | Out-String | Invoke-Expression
+fnm use --silent-if-unchanged default 2>$null
+if ($LASTEXITCODE -ne 0) {
+    fnm install --lts --use
+    if ($LASTEXITCODE -ne 0) { throw 'Node LTS installation failed.' }
+    $current = fnm current
+    fnm default $current
+    if ($LASTEXITCODE -ne 0) { throw 'Could not select default Node.' }
+}
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node activation failed. Use the standard PowerShell MSI build, not the Store/MSIX build.' }
+foreach ($package in @('pnpm','@anthropic-ai/claude-code','@openai/codex')) {
+    $command = switch ($package) { 'pnpm' { 'pnpm' }; '@anthropic-ai/claude-code' { 'claude' }; default { 'codex' } }
+    if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
+        & npm.cmd install --global "--allow-scripts=$package" $package
+        if ($LASTEXITCODE -ne 0) { throw "npm installation failed: $package" }
+    }
+}
+$pythonRoot = & uv python dir
+function Find-InstalledPython {
+    Get-ChildItem -LiteralPath $pythonRoot -Directory -Filter 'cpython-3.13.*-windows-*' -ErrorAction SilentlyContinue |
+        Where-Object { -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -and (Test-Path (Join-Path $_.FullName 'python.exe')) } |
+        Sort-Object { [version]($_.Name -replace '^cpython-([0-9.]+)-.*$','$1') } -Descending | Select-Object -First 1
+}
+$python = Find-InstalledPython
+if (-not $python) {
+    & uv python install 3.13
+    $installResult=$LASTEXITCODE
+    $python=Find-InstalledPython
+    if (-not $python) { throw "Python installation failed ($installResult)." }
+    if ($installResult -ne 0) { Write-Warning 'Python was installed, but uv could not create its version alias; using the verified installation directory.' }
+}
+& (Join-Path $python.FullName 'python.exe') -c 'import sys, ssl; assert sys.version_info[:2] == (3, 13)'
+if ($LASTEXITCODE -ne 0) { throw 'Installed Python failed verification.' }
+# A real installation path also works when Windows rejects uv's minor-version junction.
+$paths=@($python.FullName,(Join-Path $python.FullName 'Scripts')) + @([Environment]::GetEnvironmentVariable('Path','User').Split(';') | Where-Object { $_ -and $_ -ne $python.FullName -and $_ -ne (Join-Path $python.FullName 'Scripts') })
+[Environment]::SetEnvironmentVariable('Path',(($paths | Select-Object -Unique) -join ';'),'User')
+$env:Path=$python.FullName + ';' + $env:Path

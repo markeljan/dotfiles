@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repo is a minimal chezmoi-managed dotfiles baseline for macOS, Debian, and Ubuntu.
+This repo is a minimal chezmoi-managed dotfiles baseline for Windows, macOS, Debian, and Ubuntu.
 
 ## Primary workflow
 
@@ -19,6 +19,10 @@ Because the repo is named `dotfiles`, `chezmoi init Markeljan` uses chezmoi's de
 Maintainers may also point chezmoi at an explicit local checkout with `chezmoi init --apply --source "$PWD"`.
 
 ## Managed targets
+
+On Windows, `~/.config/powershell/profile.ps1` and `fnm.ps1` are managed, and PowerShell all-host profiles receive a source hook. A Windows-only hook adapts the shared Cursor settings, Windows Terminal appearance, and native Neovim config path; it backs up changed application files under `%LOCALAPPDATA%/dotfiles/backups`. `~/.config/windows/tahoe-day.jpg` holds the terminal wallpaper. Existing additional settings/profiles are preserved. Personal identity, credentials, and WSL installation/reboots are not repo-managed.
+
+All platforms install the regular/medium/bold MartianMono NFM font files from the pinned, SHA-256-verified Nerd Fonts archive in `.chezmoidata/fonts.toml`. `DOTFILES_SKIP_PACKAGES=1` skips downloads. Windows hooks run only on Windows; Unix shell scripts and targets are excluded there.
 
 - `~/.config/sh/bash_profile`
 - `~/.config/sh/bashrc`
@@ -52,7 +56,9 @@ On interactive Linux bootstraps, package bootstrap can also opt into a `desktop-
 
 ## Constraints
 
-- Keep the repo portable across macOS, Debian, and Ubuntu.
+- Keep the repo portable across Windows, macOS, Debian, and Ubuntu. Use LF source files per `.gitattributes` so Windows checkouts remain usable from WSL.
+- Windows scripts require standard PowerShell 7 and winget. Do not automatically enable WSL, reboot, change commit identity, or copy credentials.
+- Initialize fnm in the same process before activation. Fail clearly if initialization fails; never inherit an unwritable XDG_RUNTIME_DIR through sudo/runuser.
 - Do not add plugin frameworks or shell-specific bloat.
 - Keep `fzf` and Neovim customizations focused on the current lightweight workflow.
 - Do not store secrets in the repo.
@@ -66,6 +72,8 @@ On interactive Linux bootstraps, package bootstrap can also opt into a `desktop-
 ## Verification
 
 After changes, run:
+
+The maintained equivalents of the Unix checks below are `bash tests/verify-unix.sh` and `pwsh -NoProfile -File tests/verify-windows.ps1`. Run both when available. CI exercises their render/preservation checks on Ubuntu, macOS, and Windows. Test real bootstrap/runtime changes separately on the available operating systems.
 
 ```bash
 tmp_home="$(mktemp -d)"
@@ -92,6 +100,8 @@ git diff --stat
 ```
 
 ## Safe extension points
+
+- `~/.config/powershell/local.ps1` on Windows
 
 - `~/.config/sh/local.sh`
 - `~/.config/fish/config.fish`

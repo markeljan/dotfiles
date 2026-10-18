@@ -2,6 +2,30 @@ AGENTS.md
 CLAUDE.md
 README.md
 install.sh
+tests
+tests/**
+.github
+.github/**
+{{- if eq .chezmoi.os "windows" }}
+.chezmoiscripts/*.sh
+.bash_profile
+.bashrc
+.zprofile
+.zshrc
+.hushlogin
+.config/sh
+.config/sh/**
+.config/fish
+.config/fish/**
+.config/nvim
+.config/nvim/**
+.local/bin
+.local/bin/**
+{{- else }}
+.chezmoiscripts/*.ps1
+.config/powershell
+.config/powershell/**
+{{- end }}
 create_private_dot_ssh
 create_private_dot_ssh/**
 private_dot_ssh

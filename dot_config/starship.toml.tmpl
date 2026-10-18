@@ -1,7 +1,7 @@
 "$schema" = "https://starship.rs/config-schema.json"
 
 format = """
-$directory$git_branch$git_status${custom.aws}$gcloud$bun$nodejs$python$cmd_duration
+$directory$git_branch$git_status{{ if eq .chezmoi.os "windows" }}$aws{{ else }}${custom.aws}{{ end }}$gcloud$bun$nodejs$python$cmd_duration
 $character"""
 
 add_newline = false
@@ -20,6 +20,7 @@ format = "[$symbol$branch]($style) "
 style = "yellow"
 format = "([$all_status$ahead_behind]($style) )"
 
+{{ if ne .chezmoi.os "windows" }}
 [custom.aws]
 description = "Active AWS shell context"
 shell = ["sh"]
@@ -43,6 +44,7 @@ fi
 format = "[ $output]($style) "
 style = "yellow"
 
+{{ end }}
 [gcloud]
 symbol = " "
 format = "([ $project]($style) )"
@@ -59,7 +61,7 @@ version_format = "${major}"
 
 [python]
 symbol = "py:"
-python_binary = "python3"
+python_binary = ["python3", "python"]
 format = "[$symbol$version]($style) "
 
 [cmd_duration]

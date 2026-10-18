@@ -1,5 +1,10 @@
 {{ $bootstrap := get . "bootstrap" | default dict }}
 
+# runuser/sudo may preserve a runtime directory owned by the previous user.
+if set -q XDG_RUNTIME_DIR; and not test -w "$XDG_RUNTIME_DIR"
+    set -e XDG_RUNTIME_DIR
+end
+
 {{- range .shell.path_entries }}
 fish_add_path -p "$HOME/{{ . }}"
 {{- end }}
