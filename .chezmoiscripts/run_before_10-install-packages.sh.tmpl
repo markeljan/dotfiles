@@ -302,9 +302,6 @@ install_apt_packages() {
       ;;
   esac
 
-  log "refreshing apt metadata"
-  run_sudo apt-get update
-
   for package in "${packages[@]}"; do
     if ! dpkg -s "$package" >/dev/null 2>&1; then
       missing+=("$package")
@@ -312,6 +309,8 @@ install_apt_packages() {
   done
 
   if [ "${#missing[@]}" -gt 0 ]; then
+    log "refreshing apt metadata"
+    run_sudo apt-get update
     log "installing apt packages: ${missing[*]}"
     run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}"
   fi
@@ -409,6 +408,12 @@ install_xrdp() {
 
 disable_xrdp() {
   if ! have systemctl; then
+    return
+  fi
+
+  if ! systemctl is-enabled xrdp xrdp-sesman >/dev/null 2>&1 &&
+     ! systemctl is-active xrdp xrdp-sesman >/dev/null 2>&1 &&
+     ! systemctl is-failed xrdp xrdp-sesman >/dev/null 2>&1; then
     return
   fi
 
@@ -527,6 +532,10 @@ disable_vnc_service() {
   rm -f "{{ $vncStartScript }}"
 
   if ! have systemctl; then
+    return
+  fi
+
+  if [ ! -e "{{ $vncServicePath }}" ] && ! systemctl cat "{{ $vncServiceName }}" >/dev/null 2>&1; then
     return
   fi
 
