@@ -3,7 +3,7 @@
 	"editor.wordWrap": "on",
 	"editor.accessibilitySupport": "off",
 	"editor.largeFileOptimizations": false,
-	"editor.fontFamily": "MartianMono NFM, Menlo, Monaco, 'Courier New', monospace",
+	"editor.fontFamily": "Menlo, Monaco, 'Courier New', monospace",
 	"editor.fontSize": 16,
 	"debug.console.fontSize": 13,
 	"editor.hover.delay": 500,

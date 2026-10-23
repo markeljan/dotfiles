@@ -1,4 +1,4 @@
-local fish_shell = vim.fn.exepath("fish")
+local fish_shell = vim.fn.has("win32") == 1 and "" or vim.fn.exepath("fish")
 
 local function set_base_highlights()
   vim.api.nvim_set_hl(0, "Normal", { bg = "NONE", ctermbg = "NONE" })

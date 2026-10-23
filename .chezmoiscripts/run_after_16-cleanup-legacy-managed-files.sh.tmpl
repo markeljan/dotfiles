@@ -83,3 +83,18 @@ remove_if_template_matches "$HOME/.ssh/authorized_keys.shared" <<'EOF'
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILwXOaRFvzRwWE6lRt4DMK26VSR4e2b2hWQ7IEfi09Xa
 EOF
 rm -f "$HOME/.ssh/config.shared"
+
+# Older revisions installed MartianMono NFM; the setup now uses the terminal's default font.
+{{ if eq .chezmoi.os "darwin" -}}
+legacy_font_dir="$HOME/Library/Fonts"
+{{ else -}}
+legacy_font_dir="$HOME/.local/share/fonts"
+{{ end -}}
+legacy_fonts_removed=0
+for font_file in MartianMonoNerdFontMono-Regular.ttf MartianMonoNerdFontMono-Bold.ttf MartianMonoNerdFontMono-Medium.ttf; do
+  if [ -f "$legacy_font_dir/$font_file" ]; then
+    rm -f "$legacy_font_dir/$font_file"
+    legacy_fonts_removed=1
+  fi
+done
+if [ "$legacy_fonts_removed" = 1 ] && command -v fc-cache >/dev/null 2>&1; then fc-cache -f "$legacy_font_dir" || true; fi

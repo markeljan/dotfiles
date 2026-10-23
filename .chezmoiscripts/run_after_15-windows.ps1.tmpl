@@ -43,35 +43,19 @@ if ($isLiveHome -and $env:DOTFILES_SKIP_PACKAGES -ne '1') {
         Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
     }
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command 'if ((Get-ExecutionPolicy -Scope CurrentUser) -in @("Undefined","Restricted")) { Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force }'
+}
+# Older revisions installed MartianMono NFM; the setup now uses the terminal's default font.
+$legacyFontFamily = 'MartianMono NFM'
+if ($isLiveHome) {
     $fontDir = Join-Path $local 'Microsoft/Windows/Fonts'
-    $fontNames = @('MartianMonoNerdFontMono-Regular.ttf','MartianMonoNerdFontMono-Bold.ttf','MartianMonoNerdFontMono-Medium.ttf')
-    $missing = @($fontNames | Where-Object { -not (Test-Path (Join-Path $fontDir $_)) })
-    if ($missing.Count) {
-        $tmp = Join-Path ([IO.Path]::GetTempPath()) ('dotfiles-font-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path $tmp -Force | Out-Null
-        try {
-            $zip = Join-Path $tmp 'font.zip'
-            Invoke-WebRequest {{ .fonts.martian.url | quote }} -OutFile $zip
-            if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne {{ .fonts.martian.sha256 | quote }}) { throw 'Font archive checksum mismatch.' }
-            Expand-Archive $zip (Join-Path $tmp 'fonts')
-            New-Item -ItemType Directory -Path $fontDir -Force | Out-Null
-            foreach ($name in $missing) { Copy-Item (Join-Path $tmp "fonts/$name") (Join-Path $fontDir $name) }
-        } finally { Remove-Item -LiteralPath $tmp -Recurse -Force }
-    }
     $fontKey = 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
-    New-Item $fontKey -Force | Out-Null
-    foreach ($name in $fontNames) {
-        New-ItemProperty $fontKey -Name ($name.Replace('.ttf','') + ' (TrueType)') -Value (Join-Path $fontDir $name) -PropertyType String -Force | Out-Null
+    foreach ($name in @('MartianMonoNerdFontMono-Regular.ttf','MartianMonoNerdFontMono-Bold.ttf','MartianMonoNerdFontMono-Medium.ttf')) {
+        Remove-ItemProperty $fontKey -Name ($name.Replace('.ttf','') + ' (TrueType)') -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath (Join-Path $fontDir $name) -Force -ErrorAction SilentlyContinue
     }
-    Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public static class DotfilesFontLoader {
- [DllImport("gdi32.dll", CharSet=CharSet.Unicode)] public static extern int AddFontResourceEx(string file, uint flags, IntPtr reserved);
 }
-'@
-    foreach ($name in $fontNames) { [void][DotfilesFontLoader]::AddFontResourceEx((Join-Path $fontDir $name),0,[IntPtr]::Zero) }
-}
+# fish is not part of the Windows setup; drop terminal profiles that launch it.
+function Test-FishCommand($Value) { "$Value" -match '(^|[\s/\\])fish(\.exe)?(\s|$)' }
 $cursorPath = Join-Path $roaming 'Cursor/User/settings.json'
 $settings = if (Test-Path $cursorPath) { Get-Content $cursorPath -Raw | ConvertFrom-Json -AsHashtable } else { @{} }
 $baseline = Get-Content (Join-Path $source 'private_Library/private_Application Support/private_Cursor/User/settings.json') -Raw | ConvertFrom-Json -AsHashtable
@@ -79,8 +63,8 @@ foreach ($key in $baseline.Keys) {
     if (-not $key.EndsWith('.osx') -and $key -notin @('git.path','claudeCode.allowDangerouslySkipPermissions')) { $settings[$key]=$baseline[$key] }
 }
 $settings.Remove('git.path')
-$settings['editor.fontFamily']="'{{ .fonts.martian.family }}', Consolas, monospace"
-$settings['terminal.integrated.fontFamily']='{{ .fonts.martian.family }}'
+$settings['editor.fontFamily']="Consolas, 'Courier New', monospace"
+if ($settings['terminal.integrated.fontFamily'] -eq $legacyFontFamily) { $settings.Remove('terminal.integrated.fontFamily') }
 $settings['terminal.integrated.defaultProfile.windows']='PowerShell'
 $settings['terminal.integrated.profiles.windows']=@{
     PowerShell=@{path='pwsh.exe';args=@('-NoLogo')}
@@ -91,19 +75,21 @@ if (Test-Path $cursorPath) {
     $previous=Get-Content $cursorPath -Raw | ConvertFrom-Json -AsHashtable
     if ($previous['terminal.integrated.profiles.windows']) {
         foreach ($key in $previous['terminal.integrated.profiles.windows'].Keys) {
-            if (-not $settings['terminal.integrated.profiles.windows'].ContainsKey($key)) {
-                $settings['terminal.integrated.profiles.windows'][$key]=$previous['terminal.integrated.profiles.windows'][$key]
+            $termProfile=$previous['terminal.integrated.profiles.windows'][$key]
+            if (-not $settings['terminal.integrated.profiles.windows'].ContainsKey($key) -and -not (Test-FishCommand $termProfile.path) -and -not (Test-FishCommand ($termProfile.args -join ' '))) {
+                $settings['terminal.integrated.profiles.windows'][$key]=$termProfile
             }
         }
     }
-    if ($previous['terminal.integrated.defaultProfile.windows']) { $settings['terminal.integrated.defaultProfile.windows']=$previous['terminal.integrated.defaultProfile.windows'] }
+    $previousDefault=$previous['terminal.integrated.defaultProfile.windows']
+    if ($previousDefault -and $settings['terminal.integrated.profiles.windows'].ContainsKey($previousDefault)) { $settings['terminal.integrated.defaultProfile.windows']=$previousDefault }
 }
 Write-Config $cursorPath (($settings | ConvertTo-Json -Depth 30) + "`n")
 $terminalPath=Join-Path $local 'Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json'
 $terminal=if (Test-Path $terminalPath) { Get-Content $terminalPath -Raw | ConvertFrom-Json -AsHashtable } else { @{} }
 if (-not $terminal.profiles) { $terminal.profiles=@{} }
 if (-not $terminal.profiles.defaults) { $terminal.profiles.defaults=@{} }
-$terminal.profiles.defaults.font=@{face='{{ .fonts.martian.family }}';size=13}
+if ($terminal.profiles.defaults.font -and $terminal.profiles.defaults.font.face -eq $legacyFontFamily) { $terminal.profiles.defaults.Remove('font') }
 $terminal.profiles.defaults.opacity=80
 $terminal.profiles.defaults.useAcrylic=$true
 $terminal.profiles.defaults.colorScheme='One Half Dark'
@@ -118,10 +104,10 @@ $terminal.profiles.defaults.backgroundImageOpacity=0.25
 $terminal.profiles.defaults.backgroundImageStretchMode='uniformToFill'
 $terminal.theme='dark'
 $powerShellGuid='{a15d747b-e8ee-4c3a-b914-e6fed15e410a}'
-$terminal.profiles.list=@($terminal.profiles.list | Where-Object { $_ -and $_.guid -ne $powerShellGuid }) + @(
+$terminal.profiles.list=@($terminal.profiles.list | Where-Object { $_ -and $_.guid -ne $powerShellGuid -and -not (Test-FishCommand $_.commandline) }) + @(
     @{guid=$powerShellGuid;name='PowerShell';commandline='pwsh.exe -NoLogo';startingDirectory=$destination;hidden=$false}
 )
-if (-not $terminal.defaultProfile) { $terminal.defaultProfile=$powerShellGuid }
+if ($terminal.defaultProfile -notin @($terminal.profiles.list | ForEach-Object { $_.guid })) { $terminal.defaultProfile=$powerShellGuid }
 Write-Config $terminalPath (($terminal | ConvertTo-Json -Depth 30) + "`n")
 Get-ChildItem (Join-Path $source 'dot_config/nvim') -File -Recurse | ForEach-Object {
     $relative=[IO.Path]::GetRelativePath((Join-Path $source 'dot_config/nvim'),$_.FullName)

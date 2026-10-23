@@ -41,16 +41,16 @@ else
   printf 'env'
 fi
 """
-format = "[ $output]($style) "
+format = "[aws:$output]($style) "
 style = "yellow"
 
 {{ end }}
 [gcloud]
-symbol = " "
-format = "([ $project]($style) )"
+symbol = "gcp:"
+format = "([$symbol$project]($style) )"
 
 [bun]
-symbol = " "
+symbol = "bun:"
 format = "[$symbol$version]($style) "
 version_format = "${raw}"
 

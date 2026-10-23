@@ -95,7 +95,7 @@ expansion = "eza -a"
 
 [[shell.aliases]]
 name = "ll"
-expansion = "eza -la --icons --octal-permissions --group-directories-first"
+expansion = "eza -la --octal-permissions --group-directories-first"
 
 [[shell.aliases]]
 name = "lt"

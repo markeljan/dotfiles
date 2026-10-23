@@ -20,9 +20,9 @@ Maintainers may also point chezmoi at an explicit local checkout with `chezmoi i
 
 ## Managed targets
 
-On Windows, `~/.config/powershell/profile.ps1` and `fnm.ps1` are managed, and PowerShell all-host profiles receive a source hook. A Windows-only hook adapts the shared Cursor settings, Windows Terminal appearance, and native Neovim config path; it backs up changed application files under `%LOCALAPPDATA%/dotfiles/backups`. `~/.config/windows/tahoe-day.jpg` holds the terminal wallpaper. Existing additional settings/profiles are preserved. Personal identity, credentials, and WSL installation/reboots are not repo-managed.
+On Windows, `~/.config/powershell/profile.ps1` and `fnm.ps1` are managed, and PowerShell all-host profiles receive a source hook. A Windows-only hook adapts the shared Cursor settings, Windows Terminal appearance, and native Neovim config path; it backs up changed application files under `%LOCALAPPDATA%/dotfiles/backups`. `~/.config/windows/tahoe-day.jpg` holds the terminal wallpaper. Existing additional settings/profiles are preserved, except Windows Terminal and Cursor profiles that launch `fish`, which the hook removes. Personal identity, credentials, and WSL installation/reboots are not repo-managed.
 
-All platforms install the regular/medium/bold MartianMono NFM font files from the pinned, SHA-256-verified Nerd Fonts archive in `.chezmoidata/fonts.toml`. `DOTFILES_SKIP_PACKAGES=1` skips downloads. Windows hooks run only on Windows; Unix shell scripts and targets are excluded there.
+No custom font is installed; terminals and editors use their defaults, so keep the prompt and file listings free of Nerd Font glyphs. Apply hooks remove legacy MartianMono NFM files and settings. Windows hooks run only on Windows; Unix shell scripts and targets are excluded there.
 
 - `~/.config/sh/bash_profile`
 - `~/.config/sh/bashrc`
@@ -66,7 +66,7 @@ On interactive Linux bootstraps, package bootstrap can also opt into a `desktop-
 - Do not seed host aliases or existing `authorized_keys` entries from the current machine into the repo.
 - Preserve any existing `~/.ssh/authorized_keys` entries when regenerating the managed file, keep the repo-wide public key appended automatically, and keep machine-specific additions in `~/.ssh/authorized_keys.local`.
 - Preserve existing top-level shell rc files and SSH config when include hooks or create-only files are sufficient.
-- Keep `fish` as the intended login shell and do not auto-attach or repo-manage `tmux`.
+- Keep `fish` as the intended login shell on macOS and Linux only; the Windows setup does not use fish. Do not auto-attach or repo-manage `tmux`.
 - Do not reintroduce a separate installer wrapper when chezmoi can express the workflow directly.
 
 ## Verification
