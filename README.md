@@ -71,7 +71,7 @@ On interactive Linux `chezmoi init --apply` runs, dotfiles offers an optional mu
 
 Because this repo is named `dotfiles`, `chezmoi init Markeljan` uses chezmoi's default GitHub URL guessing and resolves to the `Markeljan/dotfiles` repo.
 
-If `fish` does not become the login shell automatically, run:
+On WSL, dotfiles leaves the distro's login shell alone (bash by default). Elsewhere, if `fish` does not become the login shell automatically, run:
 
 ```bash
 echo "$(command -v fish)" | sudo tee -a /etc/shells
@@ -143,7 +143,7 @@ What happens:
 - the package script installs the baseline packages with APT and Homebrew formulae, installs `claude-code@latest` and `codex` with Homebrew when `claude` or `codex` are missing, and then installs `fnm`, Node.js LTS, `uv`, and `bun`
 - on macOS, app-provided CLI helpers are linked into `~/.local/bin` only when the matching app bundle is already installed
 - your shell, SSH, Neovim, and prompt config are applied
-- dotfiles tries to set `fish` as the login shell
+- dotfiles tries to set `fish` as the login shell (skipped on WSL)
 
 If the shell switch cannot happen automatically, run the two manual commands shown above. Fresh Ubuntu cloud users often have passwordless `sudo` but no local account password, so `sudo chsh` is the reliable manual fix there.
 

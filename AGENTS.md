@@ -66,7 +66,7 @@ On interactive Linux bootstraps, package bootstrap can also opt into a `desktop-
 - Do not seed host aliases or existing `authorized_keys` entries from the current machine into the repo.
 - Preserve any existing `~/.ssh/authorized_keys` entries when regenerating the managed file, keep the repo-wide public key appended automatically, and keep machine-specific additions in `~/.ssh/authorized_keys.local`.
 - Preserve existing top-level shell rc files and SSH config when include hooks or create-only files are sufficient.
-- Keep `fish` as the intended login shell on macOS and Linux only; the Windows setup does not use fish. Do not auto-attach or repo-manage `tmux`.
+- Keep `fish` as the intended login shell on macOS and Linux only; the Windows setup, including WSL, does not use fish as the login shell. Do not auto-attach or repo-manage `tmux`.
 - Do not reintroduce a separate installer wrapper when chezmoi can express the workflow directly.
 
 ## Verification

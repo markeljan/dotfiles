@@ -5,6 +5,11 @@ if [ "${DOTFILES_SKIP_LOGIN_SHELL:-0}" = "1" ]; then
   exit 0
 fi
 
+# WSL is part of the Windows setup, which does not use fish; keep the distro's login shell.
+if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  exit 0
+fi
+
 have() {
   command -v "$1" >/dev/null 2>&1
 }
