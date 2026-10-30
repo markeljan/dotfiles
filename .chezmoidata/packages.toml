@@ -13,6 +13,8 @@ brew = [
   "starship",
   "tmux",
   "zoxide",
+  "zsh-autosuggestions",
+  "zsh-syntax-highlighting",
 ]
 cask = []
 
@@ -22,6 +24,8 @@ apt = [
   "bash-completion",
   "file",
   "zsh",
+  "zsh-autosuggestions",
+  "zsh-syntax-highlighting",
   "git",
   "procps",
   "curl",
@@ -39,6 +43,8 @@ apt = [
   "bash-completion",
   "file",
   "zsh",
+  "zsh-autosuggestions",
+  "zsh-syntax-highlighting",
   "git",
   "procps",
   "curl",

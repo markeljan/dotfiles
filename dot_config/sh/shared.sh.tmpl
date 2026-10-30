@@ -1,3 +1,6 @@
+{{ $bootstrap := get . "bootstrap" | default dict -}}
+# Shared environment, functions, and aliases for zsh and bash.
+
 if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ ! -w "$XDG_RUNTIME_DIR" ]; then
   unset XDG_RUNTIME_DIR
 fi
@@ -5,14 +8,7 @@ fi
 path_prepend() {
   case ":${PATH:-}:" in
     *":$1:"*) ;;
-    *)
-      if [ -n "${PATH:-}" ]; then
-        PATH="$1:$PATH"
-      else
-        PATH="$1"
-      fi
-      export PATH
-      ;;
+    *) PATH="$1${PATH:+:$PATH}"; export PATH ;;
   esac
 }
 
@@ -27,334 +23,16 @@ if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
   unset dotfiles_nofile_soft_limit
 fi
 
-{{ $bootstrap := get . "bootstrap" | default dict }}
-
-dotfiles_have() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-dotfiles_source_first() {
-  local dotfiles_source_path
-
-  for dotfiles_source_path in "$@"; do
-    if [ -r "$dotfiles_source_path" ]; then
-      . "$dotfiles_source_path"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-dotfiles_brew_prefix() {
-  if [ -n "${HOMEBREW_PREFIX:-}" ] && [ -d "${HOMEBREW_PREFIX:-}" ]; then
-    printf '%s\n' "$HOMEBREW_PREFIX"
-    return 0
-  fi
-
-  if dotfiles_have brew; then
-    brew --prefix 2>/dev/null
-    return
-  fi
-
-  {{- range .shell.brew_candidates }}
-  if [ -x "{{ . }}" ]; then
-    "{{ . }}" --prefix 2>/dev/null
-    return
-  fi
-  {{- end }}
-
-  return 1
-}
-
-dotfiles_bun_root() {
-  local bun_path bun_bin
-
-  if [ -n "${BUN_INSTALL:-}" ] && [ -d "${BUN_INSTALL:-}" ]; then
-    printf '%s\n' "$BUN_INSTALL"
-    return 0
-  fi
-
-  if [ -r "$HOME/.bun/_bun" ]; then
-    printf '%s\n' "$HOME/.bun"
-    return 0
-  fi
-
-  bun_path="$(command -v bun 2>/dev/null || true)"
-  case "$bun_path" in
-    */.bun/bin/bun)
-      bun_bin="${bun_path%/bun}"
-      printf '%s\n' "${bun_bin%/bin}"
-      return 0
-      ;;
-  esac
-
-  return 1
-}
-
-dotfiles_rustup_sysroot() {
-  local rustc_path cargo_home_root cargo_bin rustup_home
-  local sysroot
-
-  rustc_path="$(command -v rustc 2>/dev/null || true)"
-  if [ -z "$rustc_path" ]; then
-    return 1
-  fi
-
-  sysroot="$(rustc --print sysroot 2>/dev/null || true)"
-  if [ -n "$sysroot" ]; then
-    printf '%s\n' "$sysroot"
-    return 0
-  fi
-
-  cargo_bin="${rustc_path%/rustc}"
-  case "$cargo_bin" in
-    */.cargo/bin)
-      cargo_home_root="${cargo_bin%/.cargo/bin}"
-      rustup_home="${RUSTUP_HOME:-$cargo_home_root/.rustup}"
-      sysroot="$(CARGO_HOME="${CARGO_HOME:-$cargo_home_root/.cargo}" RUSTUP_HOME="$rustup_home" rustc --print sysroot 2>/dev/null || true)"
-      if [ -n "$sysroot" ]; then
-        printf '%s\n' "$sysroot"
-        return 0
-      fi
-      ;;
-  esac
-
-  return 1
-}
-
-dotfiles_init_brew() {
-  local brew_bin
-
-  if dotfiles_have brew; then
-    eval "$(brew shellenv)"
-    return
-  fi
-
-  {{- range .shell.brew_candidates }}
-  if [ -x "{{ . }}" ]; then
-    brew_bin="{{ . }}"
-    eval "$("$brew_bin" shellenv)"
-    return
-  fi
-  {{- end }}
-}
-
-dotfiles_set_safe_term() {
-  if [ "${TERM:-}" != "xterm-ghostty" ]; then
-    return
-  fi
-
-  if [ -n "${SSH_CONNECTION:-}${SSH_CLIENT:-}${SSH_TTY:-}" ]; then
-    TERM="xterm-256color"
-    export TERM
-    unset TERMINFO
-    return
-  fi
-
-  if dotfiles_have infocmp && infocmp xterm-ghostty >/dev/null 2>&1; then
-    return
-  fi
-
-  TERM="xterm-256color"
-  export TERM
-  unset TERMINFO
-}
-
-mkcd() {
-  if [ "$#" -eq 0 ]; then
-    printf 'mkcd: missing directory\n' >&2
-    return 1
-  fi
-
-  mkdir -p -- "$1" && cd -- "$1"
-}
-
-dotfiles_rmrf_target_path() {
-  if [ "$#" -ne 1 ]; then
-    return 1
-  fi
-
-  local input expanded trimmed parent base parent_abs
-
-  input="$1"
-
-  case "$input" in
-    "~")
-      expanded="$HOME"
-      ;;
-    "~/"*)
-      expanded="$HOME/${input#~/}"
-      ;;
-    *)
-      expanded="$input"
-      ;;
-  esac
-
-  if [ ! -e "$expanded" ]; then
-    return 1
-  fi
-
-  trimmed="$expanded"
-  while [ "$trimmed" != "/" ] && [ "${trimmed%/}" != "$trimmed" ]; do
-    trimmed="${trimmed%/}"
-  done
-
-  if [ "$trimmed" = "/" ]; then
-    printf '/\n'
-    return 0
-  fi
-
-  base="${trimmed##*/}"
-  parent="${trimmed%/*}"
-
-  if [ "$parent" = "$trimmed" ]; then
-    parent="."
-  elif [ -z "$parent" ]; then
-    parent="/"
-  fi
-
-  parent_abs="$(
-    cd -- "$parent" 2>/dev/null && pwd -P
-  )" || return 1
-
-  if [ "$parent_abs" = "/" ]; then
-    printf '/%s\n' "$base"
-  else
-    printf '%s/%s\n' "$parent_abs" "$base"
-  fi
-}
-
-dotfiles_rmrf_stage_directory_contents() {
-  if [ "$#" -ne 2 ]; then
-    return 1
-  fi
-
-  local target timestamp attempt trash trash_base
-
-  target="$1"
-  timestamp="$2"
-
-  if [ ! -d "$target" ] || [ -L "$target" ]; then
-    return 1
-  fi
-
-  attempt=0
-  while :; do
-    attempt=$((attempt + 1))
-    trash="$target/.rmrf-contents.__trash__.$timestamp.$$.${attempt}"
-    if [ ! -e "$trash" ]; then
+if [ -z "${HOMEBREW_PREFIX:-}" ]; then
+  for brew_bin in{{ range .shell.brew_candidates }} {{ . }}{{ end }}; do
+    if [ -x "$brew_bin" ]; then
+      eval "$("$brew_bin" shellenv)"
       break
     fi
   done
+  unset brew_bin
+fi
 
-  if ! command mkdir -- "$trash"; then
-    return 1
-  fi
-
-  trash_base="${trash##*/}"
-  if ! command find "$target" -mindepth 1 -maxdepth 1 ! -name "$trash_base" -exec mv -- {} "$trash"/ \;; then
-    command rmdir -- "$trash" >/dev/null 2>&1 || true
-    return 1
-  fi
-
-  command rm -rf -- "$trash" >/dev/null 2>&1 &
-  return 0
-}
-
-rmrf() {
-  if [ "$#" -eq 0 ]; then
-    printf 'rmrf: missing path\n' >&2
-    return 1
-  fi
-
-  local input expanded target timestamp trash attempt mv_output mv_status
-
-  for input in "$@"; do
-    if [ -z "$input" ]; then
-      printf 'rmrf: refusing empty path\n' >&2
-      continue
-    fi
-
-    case "$input" in
-      /|.|..|~|~/)
-        printf 'rmrf: refusing dangerous path: %s\n' "$input" >&2
-        continue
-        ;;
-    esac
-
-    case "$input" in
-      "~")
-        expanded="$HOME"
-        ;;
-      "~/"*)
-        expanded="$HOME/${input#~/}"
-        ;;
-      *)
-        expanded="$input"
-        ;;
-    esac
-
-    if [ ! -e "$expanded" ]; then
-      printf 'rmrf: not found: %s\n' "$input" >&2
-      continue
-    fi
-
-    target="$(dotfiles_rmrf_target_path "$input")"
-    if [ -z "$target" ]; then
-      printf 'rmrf: could not resolve path: %s\n' "$input" >&2
-      continue
-    fi
-
-    if [ "$target" = "/" ] || [ "$target" = "$HOME" ]; then
-      printf 'rmrf: refusing protected path: %s\n' "$target" >&2
-      continue
-    fi
-
-    timestamp="$(date +%s 2>/dev/null || printf '0\n')"
-    attempt=0
-    while :; do
-      attempt=$((attempt + 1))
-      trash="$target.__trash__.$timestamp.$$.${attempt}"
-      if [ ! -e "$trash" ]; then
-        break
-      fi
-    done
-
-    mv_output="$(command mv -- "$target" "$trash" 2>&1)"
-    mv_status=$?
-    if [ "$mv_status" -ne 0 ]; then
-      if dotfiles_rmrf_stage_directory_contents "$target" "$timestamp"; then
-        printf 'rmrf: cleared contents of %s (async); kept directory after rename failed\n' "$target"
-        continue
-      fi
-      if [ -n "$mv_output" ]; then
-        printf '%s\n' "$mv_output" >&2
-      fi
-      printf 'rmrf: failed to stage path for deletion: %s\n' "$target" >&2
-      continue
-    fi
-
-    command rm -rf -- "$trash" >/dev/null 2>&1 &
-    printf 'rmrf: removed %s (async)\n' "$target"
-  done
-}
-
-unalias gc 2>/dev/null || true
-
-gc() {
-  local message
-
-  if [ "$#" -eq 0 ]; then
-    message="yolo"
-  else
-    message="$*"
-  fi
-
-  git commit -m "$message"
-}
-
-dotfiles_init_brew
 export HOMEBREW_NO_INSTALL_CLEANUP=1
 export HOMEBREW_NO_ENV_HINTS=1
 {{- if get $bootstrap "install_desktop_vnc" | default false }}
@@ -367,7 +45,23 @@ export OPENCLAW_NO_RESPAWN=1
 {{- range .shell.path_entries }}
 path_prepend "$HOME/{{ . }}"
 {{- end }}
-dotfiles_set_safe_term
+
+# Remote hosts usually lack Ghostty's terminfo.
+if [ "${TERM:-}" = "xterm-ghostty" ]; then
+  if [ -n "${SSH_CONNECTION:-}" ] || ! infocmp xterm-ghostty >/dev/null 2>&1; then
+    export TERM=xterm-256color
+    unset TERMINFO
+  fi
+fi
+
+mkcd() {
+  mkdir -p -- "$1" && cd -- "$1"
+}
+
+unalias gc 2>/dev/null || true
+gc() {
+  git commit -m "${*:-yolo}"
+}
 
 {{- range .shell.aliases }}
 alias {{ .name }}='{{ .expansion }}'

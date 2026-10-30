@@ -1,0 +1,28 @@
+[ -f "$HOME/.config/sh/shared.sh" ] && . "$HOME/.config/sh/shared.sh"
+[ -f "$HOME/.config/sh/local.sh" ] && . "$HOME/.config/sh/local.sh"
+
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt share_history hist_ignore_all_dups hist_ignore_space interactive_comments
+bindkey -e
+
+autoload -Uz compinit && compinit -u
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
+command -v fnm >/dev/null && eval "$(fnm env --use-on-cd --shell zsh)"
+command -v fzf >/dev/null && eval "$(fzf --zsh 2>/dev/null)"
+command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
+command -v starship >/dev/null && eval "$(starship init zsh)"
+
+# Fish-style autosuggestions and highlighting (highlighting must load last).
+for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+  for dir in "${HOMEBREW_PREFIX:-/opt/homebrew}/share/$plugin" "/usr/share/$plugin"; do
+    if [ -r "$dir/$plugin.zsh" ]; then
+      . "$dir/$plugin.zsh"
+      break
+    fi
+  done
+done
+unset plugin dir

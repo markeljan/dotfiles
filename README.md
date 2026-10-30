@@ -145,7 +145,7 @@ What happens:
 - your shell, SSH, Neovim, and prompt config are applied
 - dotfiles tries to set `zsh` as the login shell (skipped on WSL)
 
-If the shell switch cannot happen automatically, run the two manual commands shown above. Fresh Ubuntu cloud users often have passwordless `sudo` but no local account password, so `sudo chsh` is the reliable manual fix there.
+If the shell switch cannot happen automatically, run the manual commands shown above. Fresh Ubuntu cloud users often have passwordless `sudo` but no local account password, so `sudo chsh` is the reliable manual fix there.
 
 ## Daily Use
 
@@ -193,7 +193,7 @@ git commit -m "feat: add alias"
 git push
 ```
 
-Shared aliases live in `.chezmoidata/shell.toml`, then render into bash and zsh.
+Shared aliases live in `.chezmoidata/shell.toml`, then render into zsh and bash.
 
 If you prefer maintaining the repo from an explicit checkout like `~/Projects/dotfiles`, point chezmoi at that checkout once:
 
@@ -247,10 +247,9 @@ Useful chezmoi commands:
 This repo stays intentionally small:
 
 - macOS, Debian, and Ubuntu support
-- bash and zsh shell configs from one shared data model
+- minimal zsh (login shell) and bash configs from one shared data model
 - minimal `starship` prompt
-- `fzf` preview configuration and `fzf-preview`
-- shell completions for common installed tools in bash and zsh
+- stock `fzf` key bindings, `zsh-autosuggestions`, and `zsh-syntax-highlighting`
 - `tmux` installed without repo-managed auto-attach or custom config
 - local SSH top-level config passthrough with `config.local`
 - append-safe `authorized_keys` generation from the repo key and local file
@@ -270,7 +269,7 @@ This repo stays intentionally small:
 - `~/.config/nvim`
 - `~/.hushlogin` (empty; suppresses login banners in terminal sessions)
 - `~/.ssh/authorized_keys`
-- `~/.local/bin/fzf-preview`
+- `~/.local/bin/rmrf`
 - `~/.config/ghostty/config` (macOS only)
 - `~/.config/ghostty/backgrounds/tahoe-day.jpg` (macOS only)
 - `~/.config/cmux/cmux.json` (macOS only; includes custom shortcuts)
@@ -302,17 +301,18 @@ If a stale `~/.config/nvim/init.vim` exists alongside the managed `init.lua`, th
 
 The shared shell model lives in `.chezmoidata/shell.toml`.
 
-v1 keeps the shell layer intentionally plain, with a few restored workflow helpers:
+The shell layer is intentionally plain zsh, close to stock:
 
 - a macOS soft open-file limit of `65536` for shell-launched developer tools, avoiding the default `256` ceiling during concurrent Codex skill/plugin discovery
 - shared PATH entries for `~/.local/bin` and `~/.bun/bin`
 - optional `brew shellenv`
 - optional `fnm` initialization with Node.js LTS via `fnm`
-- optional completion bootstrap for bash, zsh, Bun, pnpm, cargo, and `fzf`
+- stock `compinit` completion, shared history, and emacs key bindings in zsh
+- optional `fzf` key bindings, `zsh-autosuggestions`, and `zsh-syntax-highlighting`
 - optional `zoxide` and `starship` initialization (`z` stays available without overriding `cd`)
-- shared functions: `mkcd`, `gc`, `rmrf`
+- shared functions: `mkcd`, `gc`; `rmrf` is a script in `~/.local/bin`
 - bun shortcuts: `b`, `bi`, `bx`, `brd`, `brb`, `brs`, `brt`, `brl`, `brf`, `brc`
-- shell shortcuts: `cat`, `grep`, `mkdir`, `rsy`
+- shell shortcuts: `cat`, `mkdir`, `rsy`
 - `eza` shortcuts: `l`, `la`, `ll`, `lt`
 - git shortcuts: `ga`, `gd`, `gl`, `gp`, `gs`, `gst`, `gfl`
 - system shortcut: `sys`
@@ -320,11 +320,7 @@ v1 keeps the shell layer intentionally plain, with a few restored workflow helpe
 - pnpm shortcuts: `pi`, `px`, `prd`, `prb`, `prs`, `prt`, `prl`, `prf`, `prc`
 - Claude/Codex shortcuts: `dclaude`, `dcodex`
 
-bash and zsh use aliases. Shared functions are defined separately.
-
-`rmrf` stages removal by renaming the target to a hidden sibling and deleting it in the background. It refuses empty paths, `.`, `..`, `~`, `/`, and the resolved home directory, and it does not follow the final symlink component when removing a link. If a real directory cannot be renamed in place, it falls back to clearing that directory's contents asynchronously while keeping the directory itself.
-
-`fzf` is configured with a right-hand 50% preview split and `~/.local/bin/fzf-preview`.
+`rmrf` stages removal by renaming the target to a hidden sibling and deleting it in the background. It refuses empty paths, `.`, `..`, `/`, and the resolved home directory, and it does not follow the final symlink component when removing a link. If the target cannot be renamed, it falls back to a plain `rm -rf`.
 
 ## SSH behavior
 
@@ -368,7 +364,7 @@ Baseline package definitions live in `.chezmoidata/packages.toml`. The package s
 - `bun` installs through the official Bun installer
 - `neovim` installs through the system package manager
 
-On macOS, the package bootstrap no longer installs Homebrew `bash` or `zsh`. The system shells are sufficient, and `zsh` remains the primary shell.
+On macOS, the package bootstrap no longer installs Homebrew `bash` or `zsh`. The system shells are sufficient, and `/bin/zsh` is the login shell.
 
 Set `DOTFILES_SKIP_PACKAGES=1` when you want to test or apply the repo without running package installs.
 

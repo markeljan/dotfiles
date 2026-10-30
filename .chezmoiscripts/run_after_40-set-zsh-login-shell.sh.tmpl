@@ -116,7 +116,11 @@ print_manual_instructions() {
 main() {
   local zsh_path current_shell
 
-  zsh_path="$(command -v zsh || true)"
+  if [ -x /bin/zsh ]; then
+    zsh_path=/bin/zsh
+  else
+    zsh_path="$(command -v zsh || true)"
+  fi
   if [ -z "$zsh_path" ]; then
     exit 0
   fi

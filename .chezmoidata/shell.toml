@@ -74,10 +74,6 @@ name = "gp"
 expansion = "git push"
 
 [[shell.aliases]]
-name = "grep"
-expansion = "rg"
-
-[[shell.aliases]]
 name = "gs"
 expansion = "git status"
 

@@ -33,7 +33,7 @@ No custom font is installed; terminals and editors use their defaults, so keep t
 - `~/.config/nvim`
 - `~/.hushlogin` (empty; suppresses login banners in terminal sessions)
 - `~/.ssh/authorized_keys`
-- `~/.local/bin/fzf-preview`
+- `~/.local/bin/rmrf`
 - `~/.config/ghostty/config` on macOS only
 - `~/.config/ghostty/backgrounds/tahoe-day.jpg` on macOS only
 - `~/.config/cmux/cmux.json` on macOS only
@@ -60,7 +60,8 @@ On interactive Linux bootstraps, package bootstrap can also opt into a `desktop-
 - Do not seed host aliases or existing `authorized_keys` entries from the current machine into the repo.
 - Preserve any existing `~/.ssh/authorized_keys` entries when regenerating the managed file, keep the repo-wide public key appended automatically, and keep machine-specific additions in `~/.ssh/authorized_keys.local`.
 - Preserve existing top-level shell rc files and SSH config when include hooks or create-only files are sufficient.
-- Keep `zsh` as the intended login shell on macOS and Linux only; bash and zsh share config through `~/.config/sh`, and the Windows setup, including WSL, does not change the login shell. Do not auto-attach or repo-manage `tmux`.
+- Keep `zsh` as the login shell on macOS and Linux with a minimal, near-stock config; bash and zsh share config through `~/.config/sh`. The Windows setup, including WSL, does not change the login shell. Do not reintroduce `fish`.
+- Do not auto-attach or repo-manage `tmux`.
 - Do not reintroduce a separate installer wrapper when chezmoi can express the workflow directly.
 
 ## Verification
@@ -76,9 +77,12 @@ printf 'set number\n' >"$tmp_home/.config/nvim/init.vim"
 HOME="$tmp_home" DOTFILES_SKIP_PACKAGES=1 DOTFILES_SKIP_LOGIN_SHELL=1 chezmoi init --apply --force --source "$PWD" --destination "$tmp_home"
 bash -n "$tmp_home/.bashrc"
 zsh -n "$tmp_home/.zshrc"
+zsh -n "$tmp_home/.config/sh/zshrc"
+bash -n "$tmp_home/.config/sh/shared.sh"
 printf '# local machine change\n' >>"$tmp_home/.zshrc"
 HOME="$tmp_home" DOTFILES_SKIP_PACKAGES=1 DOTFILES_SKIP_LOGIN_SHELL=1 chezmoi apply --force --source "$PWD" --destination "$tmp_home"
 grep -Fq '# local machine change' "$tmp_home/.zshrc"
+test ! -e "$tmp_home/.config/fish"
 HOME="$tmp_home" nvim --headless "+qa" || true
 test -f "$tmp_home/.ssh/authorized_keys"
 grep -Fq 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILwXOaRFvzRwWE6lRt4DMK26VSR4e2b2hWQ7IEfi09Xa' "$tmp_home/.ssh/authorized_keys"

@@ -84,3 +84,14 @@ for font_file in MartianMonoNerdFontMono-Regular.ttf MartianMonoNerdFontMono-Bol
   fi
 done
 if [ "$legacy_fonts_removed" = 1 ] && command -v fc-cache >/dev/null 2>&1; then fc-cache -f "$legacy_font_dir" || true; fi
+# fish and the custom fzf setup are no longer managed; drop their old managed files.
+rm -f \
+  "$HOME/.config/fish/conf.d/00-path-and-env.fish" \
+  "$HOME/.config/fish/conf.d/05-baseline.fish" \
+  "$HOME/.config/fish/conf.d/10-abbr.fish" \
+  "$HOME/.config/fish/conf.d/15-fzf.fish" \
+  "$HOME/.config/fish/conf.d/20-init.fish" \
+  "$HOME/.config/fish/functions/mkcd.fish" \
+  "$HOME/.config/fish/functions/rmrf.fish" \
+  "$HOME/.config/sh/fzf.sh" \
+  "$HOME/.local/bin/fzf-preview"

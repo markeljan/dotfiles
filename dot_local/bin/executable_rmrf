@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Fast remove: rename the target aside, then delete it in the background.
+set -u
+
+if [ "$#" -eq 0 ]; then
+  printf 'rmrf: missing path\n' >&2
+  exit 1
+fi
+
+status=0
+for input in "$@"; do
+  case "$input" in
+    "" | / | . | ..)
+      printf 'rmrf: refusing dangerous path: %s\n' "$input" >&2
+      status=1
+      continue
+      ;;
+  esac
+
+  if [ ! -e "$input" ] && [ ! -L "$input" ]; then
+    printf 'rmrf: not found: %s\n' "$input" >&2
+    status=1
+    continue
+  fi
+
+  # Resolve the parent only, so a symlink target is never followed.
+  trimmed="$input"
+  while [ "${trimmed%/}" != "$trimmed" ]; do trimmed="${trimmed%/}"; done
+  case "$trimmed" in
+    */*) parent="${trimmed%/*}"; parent="${parent:-/}" ;;
+    *) parent=. ;;
+  esac
+  parent="$(cd -- "$parent" && pwd -P)" || { status=1; continue; }
+  target="${parent%/}/${trimmed##*/}"
+
+  if [ "$target" = "/" ] || [ "$target" = "$HOME" ]; then
+    printf 'rmrf: refusing protected path: %s\n' "$target" >&2
+    status=1
+    continue
+  fi
+
+  trash="$target.__trash__.$(date +%s).$$"
+  if mv -- "$target" "$trash" 2>/dev/null; then
+    rm -rf -- "$trash" >/dev/null 2>&1 &
+    printf 'rmrf: removed %s (async)\n' "$target"
+  elif rm -rf -- "$target"; then
+    printf 'rmrf: removed %s\n' "$target"
+  else
+    status=1
+  fi
+done
+
+exit "$status"

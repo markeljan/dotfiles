@@ -1,0 +1,20 @@
+case $- in
+  *i*) ;;
+  *) return ;;
+esac
+
+[ -f "$HOME/.config/sh/shared.sh" ] && . "$HOME/.config/sh/shared.sh"
+[ -f "$HOME/.config/sh/local.sh" ] && . "$HOME/.config/sh/local.sh"
+
+for completion in "${HOMEBREW_PREFIX:-/opt/homebrew}/etc/profile.d/bash_completion.sh" /usr/share/bash-completion/bash_completion; do
+  if [ -r "$completion" ]; then
+    . "$completion"
+    break
+  fi
+done
+unset completion
+
+command -v fnm >/dev/null && eval "$(fnm env --use-on-cd --shell bash)"
+command -v fzf >/dev/null && eval "$(fzf --bash 2>/dev/null)"
+command -v zoxide >/dev/null && eval "$(zoxide init bash)"
+command -v starship >/dev/null && eval "$(starship init bash)"
