@@ -48,20 +48,6 @@ dotfiles_auto_tmux_attach() {
 dotfiles_auto_tmux_attach
 EOF
 
-remove_if_template_matches "$HOME/.config/fish/conf.d/30-ssh-tmux.fish" <<'EOF'
-if status is-interactive
-    if set -q SSH_CONNECTION
-        if not set -q TMUX
-            if not set -q SSH_ORIGINAL_COMMAND
-                if command -q tmux
-                    exec tmux new-session -A -s "main"
-                end
-            end
-        end
-    end
-end
-EOF
-
 remove_if_template_matches "$HOME/.tmux.conf" <<'EOF'
 set -g status off
 set -g mouse on

@@ -16,6 +16,17 @@ path_prepend() {
   esac
 }
 
+# macOS defaults to 256 open files, which is too low for concurrent skill/plugin loading.
+if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+  dotfiles_nofile_soft_limit="$(ulimit -Sn 2>/dev/null || true)"
+  if [ -n "$dotfiles_nofile_soft_limit" ] \
+    && [ "$dotfiles_nofile_soft_limit" != "unlimited" ] \
+    && [ "$dotfiles_nofile_soft_limit" -lt 65536 ] 2>/dev/null; then
+    ulimit -S -n 65536 2>/dev/null || true
+  fi
+  unset dotfiles_nofile_soft_limit
+fi
+
 {{ $bootstrap := get . "bootstrap" | default dict }}
 
 dotfiles_have() {

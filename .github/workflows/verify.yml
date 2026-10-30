@@ -21,10 +21,10 @@ jobs:
           echo "$RUNNER_TEMP/dotfiles-bin" >> "$GITHUB_PATH"
       - name: Install Linux test shells
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fish zsh neovim
+        run: sudo apt-get update && sudo apt-get install -y zsh neovim
       - name: Install macOS test shells
         if: runner.os == 'macOS'
-        run: brew install fish zsh neovim
+        run: brew install zsh neovim
       - name: Verify Unix
         if: runner.os != 'Windows'
         shell: bash

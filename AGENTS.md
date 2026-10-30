@@ -20,7 +20,7 @@ Maintainers may also point chezmoi at an explicit local checkout with `chezmoi i
 
 ## Managed targets
 
-On Windows, `~/.config/powershell/profile.ps1` and `fnm.ps1` are managed, and PowerShell all-host profiles receive a source hook. A Windows-only hook adapts the shared Cursor settings, Windows Terminal appearance, and native Neovim config path; it backs up changed application files under `%LOCALAPPDATA%/dotfiles/backups`. `~/.config/windows/tahoe-day.jpg` holds the terminal wallpaper. Existing additional settings/profiles are preserved, except Windows Terminal and Cursor profiles that launch `fish`, which the hook removes. Personal identity, credentials, and WSL installation/reboots are not repo-managed.
+On Windows, `~/.config/powershell/profile.ps1` and `fnm.ps1` are managed, and PowerShell all-host profiles receive a source hook. A Windows-only hook adapts the shared Cursor settings, Windows Terminal appearance, and native Neovim config path; it backs up changed application files under `%LOCALAPPDATA%/dotfiles/backups`. `~/.config/windows/tahoe-day.jpg` holds the terminal wallpaper. Existing additional settings/profiles are preserved, except Windows Terminal and Cursor profiles that launch `fish`, which the hook removes as stale. Personal identity, credentials, and WSL installation/reboots are not repo-managed.
 
 No custom font is installed; terminals and editors use their defaults, so keep the prompt and file listings free of Nerd Font glyphs. Apply hooks remove legacy MartianMono NFM files and settings. Windows hooks run only on Windows; Unix shell scripts and targets are excluded there.
 
@@ -29,9 +29,6 @@ No custom font is installed; terminals and editors use their defaults, so keep t
 - `~/.config/sh/zprofile`
 - `~/.config/sh/zshrc`
 - `~/.config/sh/shared.sh`
-- `~/.config/fish/conf.d/*.fish`
-- `~/.config/fish/functions/mkcd.fish`
-- `~/.config/fish/functions/rmrf.fish`
 - `~/.config/starship.toml`
 - `~/.config/nvim`
 - `~/.hushlogin` (empty; suppresses login banners in terminal sessions)
@@ -46,8 +43,6 @@ No custom font is installed; terminals and editors use their defaults, so keep t
 - `~/.local/bin/cursor`, `~/.local/bin/cursor-tunnel`, `~/.local/bin/code`, and `~/.local/bin/github` on macOS only when the matching app bundle is already installed
 
 Top-level shell files are created when missing. `~/.ssh/config` is created by a post-apply hook when missing. If they already exist, they are preserved and may receive a small source/include hook instead of being replaced.
-
-`~/.config/fish/config.fish` is create-only. Shared fish behavior belongs in `~/.config/fish/conf.d/*.fish`, while machine-specific edits can live in `~/.config/fish/config.fish` or `~/.config/fish/conf.d/99-local.fish`.
 
 On macOS, `~/Library/Application Support/com.mitchellh.ghostty/config` and `~/Library/Application Support/com.cmuxterm.app/config.ghostty` are linked to `~/.config/ghostty/config`.
 
@@ -66,7 +61,7 @@ On interactive Linux bootstraps, package bootstrap can also opt into a `desktop-
 - Do not seed host aliases or existing `authorized_keys` entries from the current machine into the repo.
 - Preserve any existing `~/.ssh/authorized_keys` entries when regenerating the managed file, keep the repo-wide public key appended automatically, and keep machine-specific additions in `~/.ssh/authorized_keys.local`.
 - Preserve existing top-level shell rc files and SSH config when include hooks or create-only files are sufficient.
-- Keep `fish` as the intended login shell on macOS and Linux only; the Windows setup, including WSL, does not use fish as the login shell. Do not auto-attach or repo-manage `tmux`.
+- Keep `zsh` as the intended login shell on macOS and Linux only; bash and zsh share config through `~/.config/sh`, and the Windows setup, including WSL, does not change the login shell. Do not auto-attach or repo-manage `tmux`.
 - Do not reintroduce a separate installer wrapper when chezmoi can express the workflow directly.
 
 ## Verification
@@ -82,10 +77,9 @@ printf 'set number\n' >"$tmp_home/.config/nvim/init.vim"
 HOME="$tmp_home" DOTFILES_SKIP_PACKAGES=1 DOTFILES_SKIP_LOGIN_SHELL=1 chezmoi init --apply --force --source "$PWD" --destination "$tmp_home"
 bash -n "$tmp_home/.bashrc"
 zsh -n "$tmp_home/.zshrc"
-for file in "$tmp_home/.config/fish/config.fish" "$tmp_home"/.config/fish/conf.d/*.fish "$tmp_home"/.config/fish/functions/*.fish; do fish -n "$file"; done
-printf '# local machine change\n' >>"$tmp_home/.config/fish/config.fish"
+printf '# local machine change\n' >>"$tmp_home/.zshrc"
 HOME="$tmp_home" DOTFILES_SKIP_PACKAGES=1 DOTFILES_SKIP_LOGIN_SHELL=1 chezmoi apply --force --source "$PWD" --destination "$tmp_home"
-grep -Fq '# local machine change' "$tmp_home/.config/fish/config.fish"
+grep -Fq '# local machine change' "$tmp_home/.zshrc"
 HOME="$tmp_home" nvim --headless "+qa" || true
 test -f "$tmp_home/.ssh/authorized_keys"
 grep -Fq 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILwXOaRFvzRwWE6lRt4DMK26VSR4e2b2hWQ7IEfi09Xa' "$tmp_home/.ssh/authorized_keys"
@@ -104,8 +98,6 @@ git diff --stat
 - `~/.config/powershell/local.ps1` on Windows
 
 - `~/.config/sh/local.sh`
-- `~/.config/fish/config.fish`
-- `~/.config/fish/conf.d/99-local.fish`
 - `~/.ssh/config.local`
 - `~/.ssh/authorized_keys.local`
 

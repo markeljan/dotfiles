@@ -1,5 +1,3 @@
-local fish_shell = vim.fn.has("win32") == 1 and "" or vim.fn.exepath("fish")
-
 local function set_base_highlights()
   vim.api.nvim_set_hl(0, "Normal", { bg = "NONE", ctermbg = "NONE" })
   vim.api.nvim_set_hl(0, "NormalFloat", { bg = "NONE", ctermbg = "NONE" })
@@ -31,13 +29,6 @@ vim.opt.timeoutlen = 400
 
 if vim.fn.has("clipboard") == 1 then
   vim.opt.clipboard = "unnamedplus"
-end
-
-if fish_shell ~= "" then
-  vim.opt.shell = fish_shell
-  vim.opt.shellcmdflag = "-c"
-  vim.opt.shellquote = ""
-  vim.opt.shellxquote = ""
 end
 
 vim.cmd.colorscheme("default")

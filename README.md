@@ -22,7 +22,7 @@ Windows bootstrap installs Cursor, Windows Terminal, GitHub CLI, fnm and Node LT
 
 The shared PowerShell profile lives in `~/.config/powershell/profile.ps1`, with include hooks in both PowerShell 7 and Windows PowerShell's all-host profiles. Local profile contents are preserved. The old one-off `developer-tools` profile block is backed up and migrated automatically. Machine-specific PowerShell customizations belong in `~/.config/powershell/local.ps1`.
 
-Cursor formatting preferences and Windows Terminal styling are adapted from the macOS configuration, with native Windows paths. Cursor, Biome, Prettier, Tailwind and Remote WSL are installed. Existing additional editor settings and terminal profiles are preserved, except profiles that launch `fish`: fish is not part of the Windows setup. Changed Windows application configuration is backed up under `%LOCALAPPDATA%/dotfiles/backups`. Neovim uses `%LOCALAPPDATA%/nvim` on Windows.
+Cursor formatting preferences and Windows Terminal styling are adapted from the macOS configuration, with native Windows paths. Cursor, Biome, Prettier, Tailwind and Remote WSL are installed. Existing additional editor settings and terminal profiles are preserved, except stale profiles that launch `fish`, which the hook removes. Changed Windows application configuration is backed up under `%LOCALAPPDATA%/dotfiles/backups`. Neovim uses `%LOCALAPPDATA%/nvim` on Windows.
 
 Git defaults are applied only when absent; identity and credentials are never copied into the repository. On each new machine, set your commit name/email and sign in to GitHub, Cursor, Claude, and Codex yourself. Reopen terminals after installing tools so they receive the updated PATH.
 
@@ -71,11 +71,11 @@ On interactive Linux `chezmoi init --apply` runs, dotfiles offers an optional mu
 
 Because this repo is named `dotfiles`, `chezmoi init Markeljan` uses chezmoi's default GitHub URL guessing and resolves to the `Markeljan/dotfiles` repo.
 
-On WSL, dotfiles leaves the distro's login shell alone (bash by default). Elsewhere, if `fish` does not become the login shell automatically, run:
+On WSL, dotfiles leaves the distro's login shell alone (bash by default). Elsewhere, if `zsh` does not become the login shell automatically, run:
 
 ```bash
-echo "$(command -v fish)" | sudo tee -a /etc/shells
-sudo chsh -s "$(command -v fish)" "$USER"
+echo "$(command -v zsh)" | sudo tee -a /etc/shells
+sudo chsh -s "$(command -v zsh)" "$USER"
 ```
 
 Skip package installation when testing:
@@ -143,7 +143,7 @@ What happens:
 - the package script installs the baseline packages with APT and Homebrew formulae, installs `claude-code@latest` and `codex` with Homebrew when `claude` or `codex` are missing, and then installs `fnm`, Node.js LTS, `uv`, and `bun`
 - on macOS, app-provided CLI helpers are linked into `~/.local/bin` only when the matching app bundle is already installed
 - your shell, SSH, Neovim, and prompt config are applied
-- dotfiles tries to set `fish` as the login shell (skipped on WSL)
+- dotfiles tries to set `zsh` as the login shell (skipped on WSL)
 
 If the shell switch cannot happen automatically, run the two manual commands shown above. Fresh Ubuntu cloud users often have passwordless `sudo` but no local account password, so `sudo chsh` is the reliable manual fix there.
 
@@ -193,7 +193,7 @@ git commit -m "feat: add alias"
 git push
 ```
 
-Shared aliases live in `.chezmoidata/shell.toml`, then render into bash, zsh, and fish.
+Shared aliases live in `.chezmoidata/shell.toml`, then render into bash and zsh.
 
 If you prefer maintaining the repo from an explicit checkout like `~/Projects/dotfiles`, point chezmoi at that checkout once:
 
@@ -247,10 +247,10 @@ Useful chezmoi commands:
 This repo stays intentionally small:
 
 - macOS, Debian, and Ubuntu support
-- bash, zsh, and fish shell configs from one shared data model
+- bash and zsh shell configs from one shared data model
 - minimal `starship` prompt
 - `fzf` preview configuration and `fzf-preview`
-- shell completions for common installed tools in bash, zsh, and fish
+- shell completions for common installed tools in bash and zsh
 - `tmux` installed without repo-managed auto-attach or custom config
 - local SSH top-level config passthrough with `config.local`
 - append-safe `authorized_keys` generation from the repo key and local file
@@ -267,9 +267,6 @@ This repo stays intentionally small:
 - `~/.config/sh/zprofile`
 - `~/.config/sh/zshrc`
 - `~/.config/sh/shared.sh`
-- `~/.config/fish/conf.d/*.fish`
-- `~/.config/fish/functions/mkcd.fish`
-- `~/.config/fish/functions/rmrf.fish`
 - `~/.config/starship.toml`
 - `~/.config/nvim`
 - `~/.hushlogin` (empty; suppresses login banners in terminal sessions)
@@ -301,8 +298,6 @@ to:
 
 If `~/.bashrc`, `~/.zshrc`, `~/.bash_profile`, `~/.zprofile`, or `~/.ssh/config` already exist, this repo preserves them. New machines get minimal create-only files, and existing machines get a small source/include hook when needed instead of a full replacement.
 
-`~/.config/fish/config.fish` is also create-only. Shared fish behavior lives in repo-managed `~/.config/fish/conf.d/*.fish`, while machine-specific edits and third-party tool additions can live in `~/.config/fish/config.fish` or `~/.config/fish/conf.d/99-local.fish` without fighting `chezmoi apply`.
-
 If a stale `~/.config/nvim/init.vim` exists alongside the managed `init.lua`, the cleanup hook removes `init.vim` after apply so Neovim does not see conflicting startup configs.
 
 ## Shared shell baseline
@@ -311,10 +306,11 @@ The shared shell model lives in `.chezmoidata/shell.toml`.
 
 v1 keeps the shell layer intentionally plain, with a few restored workflow helpers:
 
+- a macOS soft open-file limit of `65536` for shell-launched developer tools, avoiding the default `256` ceiling during concurrent Codex skill/plugin discovery
 - shared PATH entries for `~/.local/bin` and `~/.bun/bin`
 - optional `brew shellenv`
 - optional `fnm` initialization with Node.js LTS via `fnm`
-- optional completion bootstrap for bash, zsh, fish, Bun, pnpm, cargo, and `fzf`
+- optional completion bootstrap for bash, zsh, Bun, pnpm, cargo, and `fzf`
 - optional `zoxide` and `starship` initialization (`z` stays available without overriding `cd`)
 - shared functions: `mkcd`, `gc`, `rmrf`
 - bun shortcuts: `b`, `bi`, `bx`, `brd`, `brb`, `brs`, `brt`, `brl`, `brf`, `brc`
@@ -326,7 +322,7 @@ v1 keeps the shell layer intentionally plain, with a few restored workflow helpe
 - pnpm shortcuts: `pi`, `px`, `prd`, `prb`, `prs`, `prt`, `prl`, `prf`, `prc`
 - Claude/Codex shortcuts: `dclaude`, `dcodex`
 
-fish uses `abbr` for shared aliases. bash and zsh use aliases. Shared functions are defined separately.
+bash and zsh use aliases. Shared functions are defined separately.
 
 `rmrf` stages removal by renaming the target to a hidden sibling and deleting it in the background. It refuses empty paths, `.`, `..`, `~`, `/`, and the resolved home directory, and it does not follow the final symlink component when removing a link. If a real directory cannot be renamed in place, it falls back to clearing that directory's contents asynchronously while keeping the directory itself.
 
@@ -351,7 +347,7 @@ On machines with no existing `~/.ssh/config`, the post-apply hook creates a mini
 
 Entries are merged and de-duplicated, so existing keys are preserved rather than overwritten.
 
-When using Ghostty over SSH, the macOS Ghostty config keeps only `sudo` shell integration enabled. The shared bash, zsh, and fish startup files force `TERM=xterm-256color` for SSH sessions and also downgrade to `xterm-256color` on local hosts where `xterm-ghostty` is not resolvable.
+When using Ghostty over SSH, the macOS Ghostty config keeps only `sudo` shell integration enabled. The shared bash and zsh startup files force `TERM=xterm-256color` for SSH sessions and also downgrade to `xterm-256color` on local hosts where `xterm-ghostty` is not resolvable.
 
 ## Packages
 
@@ -374,7 +370,7 @@ Baseline package definitions live in `.chezmoidata/packages.toml`. The package s
 - `bun` installs through the official Bun installer
 - `neovim` installs through the system package manager
 
-On macOS, the package bootstrap no longer installs Homebrew `bash` or `zsh`. The system shells are sufficient, and `fish` remains the primary shell.
+On macOS, the package bootstrap no longer installs Homebrew `bash` or `zsh`. The system shells are sufficient, and `zsh` remains the primary shell.
 
 Set `DOTFILES_SKIP_PACKAGES=1` when you want to test or apply the repo without running package installs.
 
@@ -385,8 +381,6 @@ Set `DOTFILES_SKIP_LOGIN_SHELL=1` when you want to skip the login-shell update s
 Keep machine-specific changes outside the repo:
 
 - `~/.config/sh/local.sh`
-- `~/.config/fish/config.fish`
-- `~/.config/fish/conf.d/99-local.fish`
 - `~/.ssh/config.local`
 - `~/.ssh/authorized_keys.local`
 

@@ -3,12 +3,30 @@
   "schemaVersion" : 1,
   "shortcuts" : {
     "bindings" : {
-      "newSurface" : "cmd+n",
-      "selectSurfaceByNumber" : "cmd+1",
       "closeTab" : "cmd+w",
-      "newTab" : "cmd+shift+n",
+      "newSurface" : "cmd+n",
+      "newTab" : {
+        "first" : {
+          "command" : true,
+          "control" : false,
+          "key" : "=",
+          "keyCode" : 24,
+          "option" : false,
+          "shift" : true
+        }
+      },
+      "newWindow" : {
+        "first" : {
+          "command" : true,
+          "control" : false,
+          "key" : "n",
+          "keyCode" : 45,
+          "option" : false,
+          "shift" : true
+        }
+      },
       "openBrowser" : "cmd+t",
-      "newWindow" : "unbound",
+      "selectSurfaceByNumber" : "cmd+1",
       "selectWorkspaceByNumber" : "unbound"
     }
   }
