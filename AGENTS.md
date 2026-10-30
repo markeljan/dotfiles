@@ -39,7 +39,6 @@ No custom font is installed; terminals and editors use their defaults, so keep t
 - `~/.config/cmux/cmux.json` on macOS only
 - `~/Library/Application Support/com.cmuxterm.app/config.ghostty` on macOS only (linked to the primary Ghostty config)
 - `~/Library/Application Support/Cursor/User/settings.json` and `~/Library/Application Support/Cursor/User/keybindings.json` on macOS only
-- `~/Library/Application Support/Kiro/User/settings.json` on macOS only
 - `~/.local/bin/cursor`, `~/.local/bin/cursor-tunnel`, `~/.local/bin/code`, and `~/.local/bin/github` on macOS only when the matching app bundle is already installed
 
 Top-level shell files are created when missing. `~/.ssh/config` is created by a post-apply hook when missing. If they already exist, they are preserved and may receive a small source/include hook instead of being replaced.

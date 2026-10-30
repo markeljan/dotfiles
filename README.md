@@ -258,7 +258,6 @@ This repo stays intentionally small:
 - package bootstrap with APT and Homebrew formulae, Homebrew-managed Claude Code and Codex installs when missing, plus `fnm`, Node.js LTS, `uv`, and `bun`
 - synced Ghostty and cmux terminal settings on macOS only
 - Cursor user settings and keybindings on macOS only
-- Kiro user settings on macOS only
 
 ## Managed files
 
@@ -278,7 +277,6 @@ This repo stays intentionally small:
 - `~/Library/Application Support/com.cmuxterm.app/config.ghostty` (macOS only; linked to the primary Ghostty config)
 - `~/Library/Application Support/Cursor/User/settings.json` (macOS only)
 - `~/Library/Application Support/Cursor/User/keybindings.json` (macOS only)
-- `~/Library/Application Support/Kiro/User/settings.json` (macOS only)
 
 On macOS, dotfiles also manages app CLI helper symlinks in `~/.local/bin` when the matching app bundle already exists:
 
