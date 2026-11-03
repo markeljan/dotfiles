@@ -84,6 +84,7 @@ for font_file in MartianMonoNerdFontMono-Regular.ttf MartianMonoNerdFontMono-Bol
   fi
 done
 if [ "$legacy_fonts_removed" = 1 ] && command -v fc-cache >/dev/null 2>&1; then fc-cache -f "$legacy_font_dir" || true; fi
+
 # fish and the custom fzf setup are no longer managed; drop their old managed files.
 rm -f \
   "$HOME/.config/fish/conf.d/00-path-and-env.fish" \
@@ -95,3 +96,7 @@ rm -f \
   "$HOME/.config/fish/functions/rmrf.fish" \
   "$HOME/.config/sh/fzf.sh" \
   "$HOME/.local/bin/fzf-preview"
+# Drop the leftover fish directories only when nothing else lives in them.
+for legacy_fish_dir in conf.d functions completions ""; do
+  rmdir "$HOME/.config/fish/$legacy_fish_dir" 2>/dev/null || true
+done

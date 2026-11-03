@@ -26,6 +26,11 @@ for input in "$@"; do
   # Resolve the parent only, so a symlink target is never followed.
   trimmed="$input"
   while [ "${trimmed%/}" != "$trimmed" ]; do trimmed="${trimmed%/}"; done
+  if [ -z "$trimmed" ]; then
+    printf 'rmrf: refusing dangerous path: %s\n' "$input" >&2
+    status=1
+    continue
+  fi
   case "$trimmed" in
     */*) parent="${trimmed%/*}"; parent="${parent:-/}" ;;
     *) parent=. ;;
