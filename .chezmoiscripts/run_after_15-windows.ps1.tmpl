@@ -39,10 +39,12 @@ foreach ($shellDir in @('PowerShell','WindowsPowerShell')) {
     }
 }
 if ($isLiveHome -and $env:DOTFILES_SKIP_PACKAGES -ne '1') {
-    if ((Get-ExecutionPolicy -Scope CurrentUser) -eq 'Undefined' -or (Get-ExecutionPolicy -Scope CurrentUser) -eq 'Restricted') {
-        Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force
+    # chezmoi runs this hook with a Process-scope Bypass, so Set-ExecutionPolicy saves the
+    # CurrentUser policy and then throws ExecutionPolicyOverride; that error is expected.
+    if ((Get-ExecutionPolicy -Scope CurrentUser) -in @('Undefined','Restricted')) {
+        try { Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force -ErrorAction Stop } catch [System.Security.SecurityException] {}
     }
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command 'if ((Get-ExecutionPolicy -Scope CurrentUser) -in @("Undefined","Restricted")) { Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force }'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command 'if ((Get-ExecutionPolicy -Scope CurrentUser) -in @("Undefined","Restricted")) { try { Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force -ErrorAction Stop } catch [System.Security.SecurityException] {} }'
 }
 # Older revisions installed MartianMono NFM; the setup now uses the terminal's default font.
 $legacyFontFamily = 'MartianMono NFM'
